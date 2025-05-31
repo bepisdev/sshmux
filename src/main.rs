@@ -23,6 +23,7 @@ struct Cli {
 }
 
 #[derive(Debug, Deserialize, Clone)]
+#[serde(deny_unknown_fields)]
 struct Host {
     host: String,
     user: Option<String>,
@@ -31,6 +32,7 @@ struct Host {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct Config {
     command: String,
     hosts: Vec<Host>,
