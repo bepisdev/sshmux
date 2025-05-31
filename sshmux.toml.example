@@ -1,0 +1,17 @@
+command = "uptime"
+
+[[hosts]]
+host = "server1.local"
+user = "root"
+identity_file = "~/.ssh/id_rsa"
+
+[[hosts]]
+host = "server2.local"
+
+[[hosts]]
+host = "server3.local"
+user = "notroot"
+port = 2220
+identity_file = "~/.ssh/id_rsa"
+
+
