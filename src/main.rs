@@ -83,8 +83,9 @@ async fn main() -> Result<()> {
     let toml_str = fs::read_to_string(cli.config)?;
     let config: Config = toml::from_str(&toml_str)?;
 
+    // Validate config, if --check-config is enabled, then exit code 0
+    validate_config(&config, cli.force)?;
     if cli.check_config {
-        validate_config(&config, cli.force)?;
         println!("Config is valid.");
         return Ok(());
     }
@@ -95,9 +96,6 @@ async fn main() -> Result<()> {
             config.command, config.hosts
         );
     }
-
-
-    validate_config(&config, cli.force)?;
 
     let mut tasks = vec![];
 
