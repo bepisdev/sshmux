@@ -4,7 +4,7 @@ PREFIX ?= /usr/local
 TARGET := target/release/$(BIN)
 BUILD := ./$(BIN)
 
-.PHONY: all sshmux install check clean
+.PHONY: all sshmux install check clean test
 
 all: sshmux
 
@@ -26,6 +26,10 @@ install: sshmux
 	@echo "Installing $(BIN) to $(PREFIX)/bin/$(BIN)..."
 	install -d $(PREFIX)/bin
 	install -m 755 $(BUILD) $(PREFIX)/bin/$(BIN)
+
+# Run test suite
+test:
+	$(CARGO) test
 
 # Clean target and local copy
 clean:
