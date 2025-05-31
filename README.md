@@ -1,4 +1,5 @@
 # sshmux
+[![Rust](https://github.com/bepisdev/sshmux/actions/workflows/rust.yml/badge.svg)](https://github.com/bepisdev/sshmux/actions/workflows/rust.yml)
 
 Run a shell command concurrently on multiple SSH hosts defined in a TOML config.
 
