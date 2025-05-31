@@ -22,8 +22,12 @@ struct Cli {
     verbose: bool,
 
     /// Only check the config for validity and exit
-                    #[arg(long, default_value_t = false)]
-                    check_config: bool,
+    #[arg(long, default_value_t = false)]
+    check_config: bool,
+
+    /// Allow duplicate hosts in the config
+    #[arg(long, default_value_t = false)]
+    force: bool,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -48,14 +52,29 @@ fn get_colored_prefix(host: &str, color_index: usize) -> ColoredString {
     format!("[{}]", host).color(color)
 }
 
-fn validate_config(config: &Config) -> Result<()> {
+fn validate_config(config: &Config, force: bool) -> Result<()> {
+    use std::collections::HashSet;
+    let mut seen = HashSet::new();
+
     for (i, host) in config.hosts.iter().enumerate() {
         if host.host.trim().is_empty() {
             anyhow::bail!("Host entry at index {} is missing a hostname.", i);
         }
+
+        let key = if let Some(user) = &host.user {
+            format!("{}@{}", user, host.host)
+        } else {
+            host.host.clone()
+        };
+
+        if !seen.insert(key.clone()) && !force {
+            anyhow::bail!("Duplicate host entry found: '{}'. Use --force to override.", key);
+        }
     }
+
     Ok(())
 }
+
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -65,7 +84,7 @@ async fn main() -> Result<()> {
     let config: Config = toml::from_str(&toml_str)?;
 
     if cli.check_config {
-        validate_config(&config)?;
+        validate_config(&config, cli.force)?;
         println!("Config is valid.");
         return Ok(());
     }
@@ -76,6 +95,9 @@ async fn main() -> Result<()> {
             config.command, config.hosts
         );
     }
+
+
+    validate_config(&config, cli.force)?;
 
     let mut tasks = vec![];
 
