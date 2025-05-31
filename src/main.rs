@@ -20,6 +20,10 @@ struct Cli {
     /// Enable verbose output
     #[arg(short, long, default_value_t = false)]
     verbose: bool,
+
+    /// Only check the config for validity and exit
+                    #[arg(long, default_value_t = false)]
+                    check_config: bool,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -44,12 +48,27 @@ fn get_colored_prefix(host: &str, color_index: usize) -> ColoredString {
     format!("[{}]", host).color(color)
 }
 
+fn validate_config(config: &Config) -> Result<()> {
+    for (i, host) in config.hosts.iter().enumerate() {
+        if host.host.trim().is_empty() {
+            anyhow::bail!("Host entry at index {} is missing a hostname.", i);
+        }
+    }
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     let toml_str = fs::read_to_string(cli.config)?;
     let config: Config = toml::from_str(&toml_str)?;
+
+    if cli.check_config {
+        validate_config(&config)?;
+        println!("Config is valid.");
+        return Ok(());
+    }
 
     if cli.verbose {
         println!(
