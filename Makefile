@@ -17,7 +17,9 @@ sshmux: check
 # Pre-run sanity check
 check:
 	@echo "Checking TOML config format..."
+	@cp sshmux.toml.example sshmux.toml
 	$(CARGO) run -- --check-config
+	@rm sshmux.toml
 
 # Install to /usr/local/bin or $PREFIX/bin
 install: sshmux
