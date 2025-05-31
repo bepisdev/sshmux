@@ -1,35 +1,94 @@
-# SSHMux
+# sshmux
 
-sshmux is a CLI tool to run a shell command concurrently across multiple SSH hosts as defined in a TOML config file. Each host's output is displayed in real time and prefixed with a uniquely colored `[HOSTNAME]` label.
+Run a shell command concurrently on multiple SSH hosts defined in a TOML config.
+
+## Features
+
+* 🧹 Run any shell command over SSH on multiple hosts concurrently.
+* 🎨 Color-coded output for clarity.
+* ✅ Config validation (with unknown key rejection and duplicate host detection).
+* 💪 Supports per-host `user`, `port`, and `identity_file` settings.
+* 🛠️ `--check-config` mode to validate configs before running.
+* 🛡️ Optional `--force` flag to allow duplicate hosts.
+
+---
 
 ## Installation
 
-``` bash
-git clone https://github.com/yourusername/ssh-runner.git
-cd ssh-runner
-cargo build --release
+### Requirements
+
+* Rust ([https://rustup.rs](https://rustup.rs))
+* OpenSSH installed and available on your system
+
+### Build & Install
+
+```bash
+git clone https://github.com/yourusername/sshmux.git
+cd sshmux
+make
+sudo make install
 ```
 
-## Usage
+This will install `sshmux` to `/usr/local/bin/`.
 
-``` bash
-./target/release/sshmux --config ./sshmux.toml --verbose
-```
-
-### CLI Options
-
-- `-c, --config <FILE>` - TOML config file (default: `sshmux.toml`)
-- `-v, --verbose` - Enables verbose output
+---
 
 ## Configuration
 
-Create a `sshmux.toml` file 
+Create a `sshmux.toml` file in the same directory or specify a path via `--config`.
 
-``` bash
+```toml
 command = "uptime"
-hosts = [
-    "host1.example.com",
-    "host2.example.com"
-]
+
+[[hosts]]
+host = "192.168.1.10"
+user = "josh"
+port = 22
+identity_file = "~/.ssh/id_rsa"
+
+[[hosts]]
+host = "192.168.1.11"
+
+[[hosts]]
+host = "192.168.1.10"
+user = "admin"
 ```
 
+> ⚠️ By default, duplicate hosts will trigger a validation error. Use `--force` to allow duplicates.
+
+---
+
+## Usage
+
+```bash
+sshmux --config sshmux.toml
+```
+
+### Options
+
+```bash
+-c, --config <PATH>       Path to the TOML config file (default: sshmux.toml)
+-v, --verbose             Enable verbose output
+    --check-config        Only check the config for validity and exit
+    --force               Allow duplicate hosts in the config
+```
+
+---
+
+## Example
+
+```bash
+sshmux -c ./sshmux.toml -v
+```
+
+Or just to validate the config:
+
+```bash
+sshmux --check-config
+```
+
+---
+
+## License
+
+MIT © Josh Burns
