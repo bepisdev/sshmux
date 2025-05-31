@@ -2,16 +2,16 @@ use colored::*;
 use serde::Deserialize;
 use std::fs;
 use std::process::Stdio;
-use std::collections::HashMap;
 use tokio::{io::{AsyncBufReadExt, BufReader}, process::Command};
-use clap::{Parser, Arg};
+use clap::Parser;
 use anyhow::Result;
 
-#[derive(Parser)]
-#[command(name = "sshmux")]
-#[command(author = "Josh Burns <joshyburnss@gmail.com>")]
-#[command(version = "1.0")]
-#[command(about = "Run a shell command concurrently on multiple SSH hosts defined in a TOML config.", long_about = None)]
+#[derive(Parser, Debug)]
+#[command(name = "sshmux",
+          about = "Run a shell command concurrently on multiple SSH hosts defined in a TOML config.",
+          author = "Josh Burns <joshyburnss@gmail.com>",
+          version = "1",
+          long_about = None)]
 struct Cli {
     /// Path to the TOML config file
     #[arg(short, long, default_value = "sshmux.toml")]
@@ -22,10 +22,18 @@ struct Cli {
     verbose: bool,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
+struct Host {
+    host: String,
+    user: Option<String>,
+    port: Option<u16>,
+    identity_file: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
 struct Config {
     command: String,
-    hosts: Vec<String>,
+    hosts: Vec<Host>,
 }
 
 fn get_colored_prefix(host: &str, color_index: usize) -> ColoredString {
@@ -42,35 +50,58 @@ async fn main() -> Result<()> {
     let config: Config = toml::from_str(&toml_str)?;
 
     if cli.verbose {
-        println!("Loaded config: Command='{}', Hosts={:?}", config.command, config.hosts);
+        println!(
+            "Loaded config: Command='{}', Hosts={:#?}",
+            config.command, config.hosts
+        );
     }
 
     let mut tasks = vec![];
 
-    for (i, host) in config.hosts.iter().enumerate() {
+    for (i, host_config) in config.hosts.iter().enumerate() {
         let command = config.command.clone();
-        let host_clone = host.clone();
-        let prefix = get_colored_prefix(&host_clone, i);
+        let host_clone = host_config.clone();
+        let prefix = get_colored_prefix(&host_clone.host, i);
         let verbose = cli.verbose;
 
         let task = tokio::spawn(async move {
+            let host = host_clone.host;
+            let port = host_clone.port.unwrap_or(22);
+            let user = host_clone.user;
+            let identity_file = host_clone.identity_file;
+
             if verbose {
-                println!("{} Connecting...", prefix);
+                println!("{} Connecting to {}:{}...", prefix, host, port);
             }
 
-            let mut child = Command::new("ssh")
-                .arg(&host_clone)
-                .arg(&command)
+            let mut ssh_args = vec!["-p".to_string(), port.to_string()];
+
+            if let Some(identity) = identity_file {
+                ssh_args.push("-i".to_string());
+                ssh_args.push(identity);
+            }
+
+            let destination = if let Some(user) = user {
+                format!("{}@{}", user, host)
+            } else {
+                host
+            };
+
+            ssh_args.push(destination);
+            ssh_args.push(command);
+
+            let mut child = match Command::new("ssh")
+                .args(&ssh_args)
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped())
                 .spawn()
-                {
-                    Ok(child) => child,
-                    Err(e) => {
-                        eprintln!("{} failed to spawn ssh command: {}", prefix, e);
-                        return;
-                    }
+            {
+                Ok(child) => child,
+                Err(e) => {
+                    eprintln!("{} Failed to spawn ssh command: {}", prefix, e);
+                    return;
                 }
+            };
 
             if let Some(stdout) = child.stdout.take() {
                 let reader = BufReader::new(stdout);
@@ -87,8 +118,6 @@ async fn main() -> Result<()> {
                     eprintln!("{} {}", prefix, line);
                 }
             }
-
-            let _ = child.await;
         });
 
         tasks.push(task);

@@ -9,3 +9,4 @@ toml = "0.8"
 colored = "2"
 tokio = { version = "1", features = ["full"] }
 anyhow = "1"
+clap = { version = "4.5.39", features = ["derive"] }
